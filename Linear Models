@@ -1,0 +1,118 @@
+# استيراد المكتبات الأساسية
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# نموذج خطي أساسي
+class LinearModel:
+    def __init__(self, num_features):
+        self.num_features = num_features
+        self.weights = np.zeros(num_features)  # تهيئة الأوزان
+        self.bias = 0  # تهيئة الانحياز
+
+    def __call__(self, X):
+        return np.dot(X, self.weights) + self.bias  # تنبؤات النموذج
+
+# نموذج الانحدار الخطي
+class LinearRegressor(LinearModel):
+    def fit(self, X, y, learning_rate=0.01, epochs=100):
+        error_history = []
+        for _ in range(epochs):
+            predictions = self(X)
+            error = y - predictions
+            gradient = -2 * np.dot(X.T, error) / len(y)
+            self.weights -= learning_rate * gradient
+            self.bias -= learning_rate * np.mean(error)
+            current_error = ((y - predictions) ** 2).mean()
+            error_history.append(current_error)
+        return error_history
+
+    def predict(self, X):
+        return self(X)
+
+# نموذج التصنيف الخطي
+class LinearClassifier(LinearModel):
+    def fit(self, X, y, learning_rate=0.01, epochs=100):
+        error_history = []
+        for _ in range(epochs):
+            predictions = self(X)
+            sigmoid = 1 / (1 + np.exp(-predictions))
+            error = y - sigmoid
+            gradient = -np.dot(X.T, error) / len(y)
+            self.weights -= learning_rate * gradient
+            self.bias -= learning_rate * np.mean(error)
+            current_error = -np.mean(y * np.log(sigmoid) + (1 - y) * np.log(1 - sigmoid))
+            error_history.append(current_error)
+        return error_history
+
+    def predict(self, X):
+        predictions = self(X)
+        sigmoid = 1 / (1 + np.exp(-predictions))
+        return np.round(sigmoid)
+
+    def predict_proba(self, X):
+        predictions = self(X)
+        sigmoid = 1 / (1 + np.exp(-predictions))
+        return sigmoid
+
+# الخطوة 2: تحميل البيانات ومعالجة القيم النصية وتحويلها إلى قيم رقمية
+data = pd.read_csv('Student_Performance.csv')
+print(data.head())  # عرض أول خمس صفوف للتأكد من البيانات
+
+# تحديد الأهداف Y والميزات X
+Y = data['Performance Index'].to_numpy()  # الهدف
+X = data.drop(columns=['Performance Index'])  # الميزات
+
+# تحويل القيم النصية في العمود "Extracurricular Activities" إلى قيم رقمية
+X['Extracurricular Activities'] = X['Extracurricular Activities'].replace({'Yes': 1, 'No': 0})
+
+# تحويل الميزات إلى مصفوفة رقمية
+X = X.to_numpy()
+
+# الخطوة 3: حساب المتوسط والانحراف المعياري لكل عمود في الميزات وتطبيق التطبيع
+mean = X.mean(axis=0)
+std = X.std(axis=0)
+normalized_X = (X - mean) / std
+
+# تطبيع الهدف Y
+normalized_Y = (Y - Y.mean()) / Y.std()
+
+# الخطوة 4: تدريب نموذج الانحدار الخطي باستخدام LinearRegressor وتتبع سجل الخطأ
+lr = LinearRegressor(num_features=normalized_X.shape[1])
+
+# تدريب النموذج وتتبع سجل الخطأ
+history = lr.fit(normalized_X, normalized_Y, learning_rate=0.01, epochs=100)
+
+# رسم سجل الخطأ لمعرفة كيفية تحسن النموذج
+plt.plot(history)
+plt.xlabel("Epochs")
+plt.ylabel("Mean Squared Error")
+plt.title("Error History for Linear Regression")
+plt.show()
+
+# الخطوة 5: تجربة نموذج التصنيف الخطي باستخدام LinearClassifier
+# لأغراض التصنيف، سنحوّل الهدف إلى بيانات ثنائية (تصنيف 0 و 1) بناءً على متوسط الأداء
+binary_Y = (Y > Y.mean()).astype(int)  # تصنيف إلى 1 للأداء فوق المتوسط و 0 للأداء دونه
+
+# تهيئة نموذج التصنيف الخطي
+lc = LinearClassifier(num_features=normalized_X.shape[1])
+
+# تدريب النموذج وتتبع سجل الخطأ (باستخدام log loss)
+classification_history = lc.fit(normalized_X, binary_Y, learning_rate=0.01, epochs=100)
+
+# رسم سجل الخطأ لمعرفة كيفية تحسن النموذج في التصنيف
+plt.plot(classification_history)
+plt.xlabel("Epochs")
+plt.ylabel("Log Loss")
+plt.title("Error History for Linear Classification")
+plt.show()
+
+# توقع احتمالية التنبؤات واختبار الدقة
+y_proba = lc.predict_proba(normalized_X)
+y_pred = lc.predict(normalized_X)
+accuracy = np.mean(y_pred == binary_Y)
+
+print(f"Classification Accuracy: {accuracy:.2f}")
+print(f"First 10 Predicted Probabilities: {y_proba[:10]}")
+print(f"First 10 Predictions: {y_pred[:10]}")
+print(f"First 10 True Labels: {binary_Y[:10]}")
