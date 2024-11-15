@@ -1,0 +1,96 @@
+# استيراد المكتبات الأساسية
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import roc_auc_score, precision_score, recall_score, accuracy_score
+from sklearn.model_selection import train_test_split, GridSearchCV
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+
+# تحميل البيانات من ملف german.csv
+data = pd.read_csv('german.csv', sep=';')
+print(data.head())  # عرض أول 5 صفوف من البيانات للتأكد
+
+# تحديد الميزات (X) والأهداف (y)
+X = data.iloc[:, 1:].to_numpy()  # الميزات تبدأ من العمود الثاني
+y = data.iloc[:, 0].to_numpy()    # العمود الأول يحتوي على التصنيف
+
+# تقسيم البيانات إلى مجموعات تدريب واختبار
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# عرض توزيع الفئات في بيانات التدريب
+plt.hist(y_train, bins=2, edgecolor='k')
+plt.xticks([0, 1])
+plt.xlabel('Class (0: Non-Creditworthy, 1: Creditworthy)')
+plt.ylabel('Count')
+plt.title('Distribution of Classes in Training Data')
+plt.show()
+
+# إنشاء نموذج الانحدار اللوجستي وتدريبه
+logistic_regression_model = LogisticRegression(solver='liblinear', random_state=42)
+logistic_regression_model.fit(X_train, y_train)
+
+# إنشاء نموذج شجرة القرار وتدريبه
+decision_tree_model = DecisionTreeClassifier(random_state=42)
+decision_tree_model.fit(X_train, y_train)
+
+# إنشاء نموذج K-Nearest Neighbors وتدريبه
+knn_model = KNeighborsClassifier(n_neighbors=5)
+knn_model.fit(X_train, y_train)
+
+# حساب التقييمات لنموذج Logistic Regression
+y_prob_logistic = logistic_regression_model.predict_proba(X_test)[:, 1]
+y_pred_logistic = logistic_regression_model.predict(X_test)
+accuracy_logistic = accuracy_score(y_test, y_pred_logistic)
+roc_auc_logistic = roc_auc_score(y_test, y_prob_logistic)
+precision_logistic = precision_score(y_test, y_pred_logistic)
+recall_logistic = recall_score(y_test, y_pred_logistic)
+
+# حساب التقييمات لنموذج Decision Tree
+y_prob_decision_tree = decision_tree_model.predict_proba(X_test)[:, 1]
+y_pred_decision_tree = decision_tree_model.predict(X_test)
+accuracy_decision_tree = accuracy_score(y_test, y_pred_decision_tree)
+roc_auc_decision_tree = roc_auc_score(y_test, y_prob_decision_tree)
+precision_decision_tree = precision_score(y_test, y_pred_decision_tree)
+recall_decision_tree = recall_score(y_test, y_pred_decision_tree)
+
+# حساب التقييمات لنموذج K-Nearest Neighbors
+y_prob_knn = knn_model.predict_proba(X_test)[:, 1]
+y_pred_knn = knn_model.predict(X_test)
+accuracy_knn = accuracy_score(y_test, y_pred_knn)
+roc_auc_knn = roc_auc_score(y_test, y_prob_knn)
+precision_knn = precision_score(y_test, y_pred_knn)
+recall_knn = recall_score(y_test, y_pred_knn)
+
+# طباعة النتائج لكل نموذج
+print(f'Accuracy of Logistic Regression: {accuracy_logistic}')
+print(f'ROC AUC of Logistic Regression: {roc_auc_logistic}')
+print(f'Precision of Logistic Regression: {precision_logistic}')
+print(f'Recall of Logistic Regression: {recall_logistic}')
+
+print(f'Accuracy of Decision Tree: {accuracy_decision_tree}')
+print(f'ROC AUC of Decision Tree: {roc_auc_decision_tree}')
+print(f'Precision of Decision Tree: {precision_decision_tree}')
+print(f'Recall of Decision Tree: {recall_decision_tree}')
+
+print(f'Accuracy of K-Nearest Neighbors: {accuracy_knn}')
+print(f'ROC AUC of K-Nearest Neighbors: {roc_auc_knn}')
+print(f'Precision of K-Nearest Neighbors: {precision_knn}')
+print(f'Recall of K-Nearest Neighbors: {recall_knn}')
+
+# تحسين البارامترات باستخدام GridSearchCV (اختياري)
+
+# تحسين البارامترات لنموذج Decision Tree
+param_grid_dt = {'max_depth': [None, 10, 20, 30], 'min_samples_split': [2, 10, 20]}
+grid_search_dt = GridSearchCV(decision_tree_model, param_grid_dt, scoring='roc_auc', cv=5)
+grid_search_dt.fit(X_train, y_train)
+best_dt_model = grid_search_dt.best_estimator_
+print(f'Best Decision Tree Model: {best_dt_model}')
+
+# تحسين البارامترات لنموذج K-Nearest Neighbors
+param_grid_knn = {'n_neighbors': [3, 5, 7, 9]}
+grid_search_knn = GridSearchCV(knn_model, param_grid_knn, scoring='roc_auc', cv=5)
+grid_search_knn.fit(X_train, y_train)
+best_knn_model = grid_search_knn.best_estimator_
+print(f'Best K-Nearest Neighbors Model: {best_knn_model}')
